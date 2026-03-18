@@ -1,0 +1,13 @@
+# Secrets
+.env
+
+# SSL certificates
+traefik/acme.json
+
+# Service data (не нужно в git)
+nextcloud/data/
+nextcloud/db/
+vaultwarden/
+
+# Logs
+*.log

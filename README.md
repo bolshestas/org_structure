@@ -17,7 +17,7 @@ Self-hosted cloud services, automated provisioning, and multi-region VPN.
 | RAM | 16GB DDR4 |
 | Storage | 256GB NVMe + 1TB HDD |
 | OS | Debian 13 (Trixie) |
-| VPS | Iceland 1984.is (€9/mo) |
+| VPS | Iceland 1984.is ($9/mo) |
 
 ## 🚀 Projects
 
@@ -33,7 +33,7 @@ Self-hosted cloud services, automated provisioning, and multi-region VPN.
 
 | Resource | Cost |
 |----------|------|
-| Iceland VPS | €9/mo |
+| Iceland VPS | $9/mo |
 | Cloud Backups | ~$3/mo |
 | **Total** | **~$12/mo** |
 

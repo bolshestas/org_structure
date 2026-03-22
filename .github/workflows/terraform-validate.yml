@@ -1,0 +1,33 @@
+name: Terraform Validate
+
+on:
+  push:
+    paths:
+      - '02-infrastructure-as-code/terraform/**'
+  pull_request:
+    paths:
+      - '02-infrastructure-as-code/terraform/**'
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.14.7
+
+      - name: Terraform Init
+        working-directory: 02-infrastructure-as-code/terraform
+        run: terraform init -backend=false
+
+      - name: Terraform Validate
+        working-directory: 02-infrastructure-as-code/terraform
+        run: terraform validate
+
+      - name: Terraform Format Check
+        working-directory: 02-infrastructure-as-code/terraform
+        run: terraform fmt -check

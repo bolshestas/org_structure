@@ -1,0 +1,4 @@
+cloudflare_api_token = "your_cloudflare_api_token"
+cloudflare_zone_id   = "your_zone_id"
+home_server_ip       = "108.228.202.233"
+iceland_vps_ip       = "185.112.147.209"

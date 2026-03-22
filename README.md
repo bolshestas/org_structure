@@ -24,7 +24,7 @@ Self-hosted cloud services, automated provisioning, and multi-region VPN.
 | # | Project | Stack | Status |
 |---|---------|-------|--------|
 | 01 | [Docker Cloud Platform](./01-docker-cloud-platform/) | Docker, Traefik, SSL | ✅ Live |
-| 02 | [Infrastructure as Code](./02-infrastructure-as-code/) | Terraform, Ansible, GitHub Actions | 🚧 WIP |
+| 02 | [Infrastructure as Code](./02-infrastructure-as-code/) | Terraform, Ansible, GitHub Actions | ✅ Live |
 | 03 | [Kubernetes Cluster](./03-kubernetes-cluster/) | k3s, ArgoCD, Helm, Longhorn | 🚧 WIP |
 | 04 | [Backup Automation](./04-backup-automation/) | Python, Restic, S3, Telegram | 🚧 WIP |
 | 05 | [Multi-Region VPN](./05-multi-region-vpn/) | WireGuard, Terraform, Ansible | 🚧 WIP |

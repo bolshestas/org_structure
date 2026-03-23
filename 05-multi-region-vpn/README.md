@@ -13,7 +13,7 @@ Clients (Russia)
 ┌─────────────────────┬─────────────────────┐
 │   Exit Node #1      │   Exit Node #2      │
 │   USA (home server) │   Iceland (VPS)     │
-│   108.228.202.233   │   185.112.147.209   │
+│   <local-server-ip> │   <vps-ip>          │
 │   WireGuard         │   WireGuard         │
 └─────────────────────┴─────────────────────┘
     ↓                         ↓

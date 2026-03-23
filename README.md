@@ -27,7 +27,7 @@ Self-hosted cloud services, automated provisioning, and multi-region VPN.
 | 02 | [Infrastructure as Code](./02-infrastructure-as-code/) | Terraform, Ansible, GitHub Actions | ✅ Live |
 | 03 | [Kubernetes Cluster](./03-kubernetes-cluster/) | k3s, ArgoCD, Helm, Longhorn | 🚧 WIP |
 | 04 | [Backup Automation](./04-backup-automation/) | Python, Restic, S3, Telegram | 🚧 WIP |
-| 05 | [Multi-Region VPN](./05-multi-region-vpn/) | WireGuard, Terraform, Ansible | 🚧 WIP |
+| 05 | [Multi-Region VPN](./05-multi-region-vpn/) | WireGuard, Terraform, Ansible | ✅ Live |
 
 ## 💰 Cost
 

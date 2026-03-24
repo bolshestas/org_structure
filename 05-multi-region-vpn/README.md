@@ -46,5 +46,5 @@ Internet (USA)           Internet (EU)
 
 | Node | Location | IP | Port |
 |------|----------|----|------|
-|   USA   | Home Server | <your-home-server-ip> | 51820/UDP |
-| Iceland | 1984.is VPS | <your-iceland-vps-ip> | 51820/UDP |
+|   USA   | Home Server | "your-home-server-ip" | 51820/UDP |
+| Iceland |     VPS     | "your-vps-ip" | 51820/UDP |

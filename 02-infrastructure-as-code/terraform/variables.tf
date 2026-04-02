@@ -12,11 +12,11 @@ variable "cloudflare_zone_id" {
 variable "home_server_ip" {
   description = "Home server public IP"
   type        = string
-  default = "<your-home-server-ip>"
+  default     = "<your-home-server-ip>"
 }
 
 variable "iceland_vps_ip" {
   description = "Iceland VPS public IP"
   type        = string
-  default = "<your-iceland-vps-ip>"
+  default     = "<your-iceland-vps-ip>"
 }

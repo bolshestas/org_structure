@@ -1,19 +1,20 @@
 # 05 — Multi-Region VPN Infrastructure
 
 ![WireGuard](https://img.shields.io/badge/VPN-WireGuard-88171A?logo=wireguard)
+![XRay](https://img.shields.io/badge/Protocol-XRay%20Reality-blue)
 ![Ansible](https://img.shields.io/badge/Config-Ansible-EE0000?logo=ansible)
 ![Terraform](https://img.shields.io/badge/DNS-Terraform-7B42BC?logo=terraform)
 
-Multi-region WireGuard VPN with USA and Iceland exit nodes for secure internet access.
+Multi-region VPN infrastructure with XRay Reality and WireGuard across USA and Iceland exit nodes.
 
 ## 🏗️ Architecture
 ```
-Clients (Russia)
+Clients (Russia/Anywhere)
     ↓
 ┌─────────────────────┬─────────────────────┐
 │   Exit Node #1      │   Exit Node #2      │
 │   USA (home server) │   Iceland (VPS)     │
-│   <local-server-ip> │   <vps-ip>          │
+│   XRay Reality      │   XRay Reality      │
 │   WireGuard         │   WireGuard         │
 └─────────────────────┴─────────────────────┘
     ↓                         ↓
@@ -22,29 +23,60 @@ Internet (USA)           Internet (EU)
 
 ## 🚀 Features
 
-- Dual-region setup (USA + Iceland)
-- Per-client config files (2 configs each)
-- One-tap region switching in WireGuard app
-- Bypasses geo-restrictions
-- Encrypted DNS (1.1.1.1 + 8.8.8.8)
+- **XRay VLESS + Reality** — undetectable traffic, mimics HTTPS to microsoft.com
+- **WireGuard** — fast VPN for personal use
+- **Dual-region** — USA + Iceland for redundancy
+- **Hiddify client** — iOS/Android/Desktop support
+- **BBR congestion control** — optimized for high latency connections
+- **Fail2ban** — SSH brute-force protection
 
-## 📱 Client Setup
+## 📱 Client Setup (XRay)
 
-1. Install **WireGuard** app (iOS/Android)
-2. Import `clientX-usa.conf` → USA server
-3. Import `clientX-iceland.conf` → Iceland server
-4. Switch between regions with one tap
+1. Install **Hiddify** app (iOS/Android/Desktop)
+2. Import `vless://` link provided by admin
+3. Switch between USA/Iceland servers in app
+
+## 📱 Client Setup (WireGuard)
+
+1. Install **WireGuard** app
+2. Import `.conf` file provided by admin
+3. Connect and enjoy
 
 ## ⚙️ Tech Stack
 
-- **WireGuard** — VPN protocol
-- **iptables** — NAT and routing
-- **Terraform** — DNS records (vpn-us, vpn-is)
-- **Ansible** — automated server configuration
+| Component | Technology |
+|-----------|------------|
+| VPN Protocol | XRay VLESS + Reality |
+| Backup VPN | WireGuard |
+| Client App | Hiddify |
+| Traffic Masking | microsoft.com SNI |
+| DPI Bypass | XTLS Vision |
+| SSH Protection | Fail2ban |
+| TCP Optimization | BBR |
+| DNS | Terraform (Cloudflare) |
 
 ## 🖥️ Servers
 
-| Node | Location | IP | Port |
-|------|----------|----|------|
-|   USA   | Home Server | "your-home-server-ip" | 51820/UDP |
-| Iceland |     VPS     | "your-vps-ip" | 51820/UDP |
+| Node | Location | XRay Port | WireGuard Port |
+|------|----------|-----------|----------------|
+| USA | Home Server | 8443/TCP | 51821/UDP |
+| Iceland | 1984.is VPS | 443/TCP | 443/UDP |
+
+## 🔧 Config Generation
+```bash
+# Generate client config
+./scripts/generate-xray-config.sh <name> <server_ip> <port> <uuid> <public_key> [sni]
+
+# Example
+./scripts/generate-xray-config.sh client1 185.112.147.209 443 UUID PUBKEY
+```
+
+## 📁 Structure
+```
+05-multi-region-vpn/
+├── scripts/
+│   └── generate-xray-config.sh  # Client config generator
+├── configs/
+│   └── client.conf.example      # WireGuard config template
+└── README.md
+```

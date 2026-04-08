@@ -1,0 +1,153 @@
+---
+- name: VPS configuration
+  hosts: vps
+  become: true
+  vars:
+    home_server_ip: "108.228.202.233"
+    telegram_token: "{{ vault_telegram_token }}"
+    telegram_chat_id: "{{ vault_telegram_chat_id }}"
+    node_exporter_version: "1.8.2"
+
+  tasks:
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+
+    - name: Install common packages
+      apt:
+        name:
+          - curl
+          - wget
+          - git
+          - htop
+          - fail2ban
+          - unattended-upgrades
+          - iptables-persistent
+        state: present
+
+    - name: Disable SSH password authentication
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^#?PasswordAuthentication'
+        line: 'PasswordAuthentication no'
+        backup: yes
+      notify: restart sshd
+
+    - name: Enable automatic security updates
+      copy:
+        content: |
+          APT::Periodic::Update-Package-Lists "1";
+          APT::Periodic::Unattended-Upgrade "1";
+        dest: /etc/apt/apt.conf.d/20auto-upgrades
+
+    - name: Configure fail2ban
+      copy:
+        content: |
+          [sshd]
+          enabled = true
+          maxretry = 3
+          bantime = 24h
+          findtime = 10m
+          action = %(action_)s
+                   telegram
+        dest: /etc/fail2ban/jail.local
+      notify: restart fail2ban
+
+    - name: Create fail2ban telegram action
+      copy:
+        content: |
+          [Definition]
+          actionban = curl -s -X POST "https://api.telegram.org/bot{{ telegram_token }}/sendMessage" \
+            -d chat_id="{{ telegram_chat_id }}" \
+            -d text="🚫 Fail2ban: IP <ip> заблокирован на {{ inventory_hostname }}"
+        dest: /etc/fail2ban/action.d/telegram.conf
+
+    - name: Create node_exporter user
+      user:
+        name: node_exporter
+        shell: /bin/false
+        system: yes
+        create_home: no
+
+    - name: Download node_exporter
+      get_url:
+        url: "https://github.com/prometheus/node_exporter/releases/download/v{{ node_exporter_version }}/node_exporter-{{ node_exporter_version }}.linux-amd64.tar.gz"
+        dest: /tmp/node_exporter.tar.gz
+
+    - name: Extract node_exporter
+      unarchive:
+        src: /tmp/node_exporter.tar.gz
+        dest: /tmp
+        remote_src: yes
+
+    - name: Install node_exporter binary
+      copy:
+        src: "/tmp/node_exporter-{{ node_exporter_version }}.linux-amd64/node_exporter"
+        dest: /usr/local/bin/node_exporter
+        mode: '0755'
+        remote_src: yes
+
+    - name: Create node_exporter systemd service
+      copy:
+        content: |
+          [Unit]
+          Description=Node Exporter
+          After=network.target
+
+          [Service]
+          User=node_exporter
+          ExecStart=/usr/local/bin/node_exporter
+          Restart=always
+
+          [Install]
+          WantedBy=multi-user.target
+        dest: /etc/systemd/system/node_exporter.service
+      notify: restart node_exporter
+
+    - name: Enable and start node_exporter
+      systemd:
+        name: node_exporter
+        enabled: yes
+        state: started
+        daemon_reload: yes
+
+    - name: Allow node_exporter from home server only
+      iptables:
+        chain: INPUT
+        protocol: tcp
+        destination_port: "9100"
+        source: "{{ home_server_ip }}"
+        jump: ACCEPT
+
+    - name: Block node_exporter from everywhere else
+      iptables:
+        chain: INPUT
+        protocol: tcp
+        destination_port: "9100"
+        jump: DROP
+
+    - name: Save iptables rules
+      command: iptables-save
+      register: iptables_rules
+
+    - name: Write iptables rules
+      copy:
+        content: "{{ iptables_rules.stdout }}"
+        dest: /etc/iptables/rules.v4
+
+  handlers:
+    - name: restart sshd
+      service:
+        name: sshd
+        state: restarted
+
+    - name: restart fail2ban
+      service:
+        name: fail2ban
+        state: restarted
+
+    - name: restart node_exporter
+      service:
+        name: node_exporter
+        state: restarted

@@ -19,7 +19,7 @@ services:
     restart: unless-stopped
     ports:
       - "80:80"
-      - "443:443"
+      - "2053:2053"
     environment:
       - CF_DNS_API_TOKEN=${CF_API_TOKEN}
       - DOCKER_API_VERSION=1.41

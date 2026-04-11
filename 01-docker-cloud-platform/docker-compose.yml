@@ -47,6 +47,10 @@ services:
       - "traefik.http.routers.vaultwarden.rule=Host(`vault.${DOMAIN}`)"
       - "traefik.http.routers.vaultwarden.entrypoints=websecure"
       - "traefik.http.routers.vaultwarden.tls.certresolver=cloudflare"
+      - "traefik.http.middlewares.vault-ratelimit.ratelimit.average=20"
+      - "traefik.http.middlewares.vault-ratelimit.ratelimit.burst=10"
+      - "traefik.http.middlewares.vault-ratelimit.ratelimit.period=1m"
+      - "traefik.http.routers.vaultwarden.middlewares=vault-ratelimit"
 
   # ─── NEXTCLOUD — личное облако ────────────────────────────────────
   nextcloud-db:
@@ -86,6 +90,10 @@ services:
       - "traefik.http.routers.nextcloud.rule=Host(`cloud.${DOMAIN}`)"
       - "traefik.http.routers.nextcloud.entrypoints=websecure"
       - "traefik.http.routers.nextcloud.tls.certresolver=cloudflare"
+      - "traefik.http.middlewares.nextcloud-ratelimit.ratelimit.average=30"
+      - "traefik.http.middlewares.nextcloud-ratelimit.ratelimit.burst=15"
+      - "traefik.http.middlewares.nextcloud-ratelimit.ratelimit.period=1m"
+      - "traefik.http.routers.nextcloud.middlewares=nextcloud-ratelimit"
 
 # ─── JELLYFIN — медиа сервер ──────────────────────────────────────
   jellyfin:
@@ -137,6 +145,10 @@ services:
       - "traefik.http.routers.paperless.rule=Host(`docs.${DOMAIN}`)"
       - "traefik.http.routers.paperless.entrypoints=websecure"
       - "traefik.http.routers.paperless.tls.certresolver=cloudflare"
+      - "traefik.http.middlewares.paperless-ratelimit.ratelimit.average=30"
+      - "traefik.http.middlewares.paperless-ratelimit.ratelimit.burst=15"
+      - "traefik.http.middlewares.paperless-ratelimit.ratelimit.period=1m"
+      - "traefik.http.routers.paperless.middlewares=paperless-ratelimit"
 
 # ─── NODE EXPORTER — метрики сервера ─────────────────────────────
   node-exporter:
@@ -168,6 +180,17 @@ services:
     networks:
       - proxy
 
+# ─── XRAY EXPORTER — метрики XRay ────────────────────────────────
+  xray-exporter:
+    build: ./xray-exporter
+    container_name: xray-exporter
+    restart: unless-stopped
+    network_mode: host
+    volumes:
+      - /usr/local/bin/xray:/usr/local/bin/xray:ro
+    labels:
+      - "traefik.enable=false"
+
   # ─── PROMETHEUS — сбор метрик ─────────────────────────────────────
   prometheus:
     image: prom/prometheus:latest
@@ -187,6 +210,10 @@ services:
       - "traefik.http.routers.prometheus.rule=Host(`prometheus.${DOMAIN}`)"
       - "traefik.http.routers.prometheus.entrypoints=websecure"
       - "traefik.http.routers.prometheus.tls.certresolver=cloudflare"
+      - "traefik.http.middlewares.prom-ratelimit.ratelimit.average=20"
+      - "traefik.http.middlewares.prom-ratelimit.ratelimit.burst=10"
+      - "traefik.http.middlewares.prom-ratelimit.ratelimit.period=1m"
+      - "traefik.http.routers.prometheus.middlewares=prom-ratelimit"
 
   # ─── GRAFANA — дашборды ───────────────────────────────────────────
   grafana:
@@ -205,6 +232,10 @@ services:
       - "traefik.http.routers.grafana.rule=Host(`grafana.${DOMAIN}`)"
       - "traefik.http.routers.grafana.entrypoints=websecure"
       - "traefik.http.routers.grafana.tls.certresolver=cloudflare"
+      - "traefik.http.middlewares.grafana-ratelimit.ratelimit.average=30"
+      - "traefik.http.middlewares.grafana-ratelimit.ratelimit.burst=15"
+      - "traefik.http.middlewares.grafana-ratelimit.ratelimit.period=1m"
+      - "traefik.http.routers.grafana.middlewares=grafana-ratelimit"
 
   # ─── UPTIME KUMA — доступность сервисов ──────────────────────────
   uptime-kuma:

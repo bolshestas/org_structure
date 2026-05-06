@@ -1,0 +1,4 @@
+---
+- name: restart warp
+  command: warp-cli --accept-tos disconnect && sleep 2 && warp-cli --accept-tos connect
+  failed_when: false

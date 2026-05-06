@@ -1,0 +1,90 @@
+---
+# ─── Packages ──────────────────────────────────────────────────
+- name: Update apt cache
+  apt:
+    update_cache: yes
+    cache_valid_time: 3600
+  tags: [common, packages]
+
+- name: Install common packages
+  apt:
+    name: "{{ common_packages }}"
+    state: present
+  tags: [common, packages]
+
+# ─── DNS on Cloudflare ─────────────────────────────────────────
+- name: Check if systemd-resolved is active
+  systemd:
+    name: systemd-resolved
+  register: resolved_status
+  failed_when: false
+  tags: [common, dns]
+
+- name: Configure systemd-resolved DNS
+  template:
+    src: resolved.conf.j2
+    dest: /etc/systemd/resolved.conf
+    mode: '0644'
+  when: resolved_status.status is defined and resolved_status.status.ActiveState == "active"
+  notify: restart systemd-resolved
+  tags: [common, dns]
+
+- name: Configure /etc/resolv.conf directly (fallback)
+  template:
+    src: resolv.conf.j2
+    dest: /etc/resolv.conf
+    mode: '0644'
+  when: resolved_status.status is not defined or resolved_status.status.ActiveState != "active"
+  tags: [common, dns]
+
+# ─── SSH hardening ─────────────────────────────────────────────
+- name: Configure sshd
+  blockinfile:
+    path: /etc/ssh/sshd_config
+    block: |
+      Port {{ ssh_port }}
+      PasswordAuthentication no
+      PermitRootLogin prohibit-password
+      PubkeyAuthentication yes
+    marker: "# {mark} ANSIBLE MANAGED"
+  notify: restart sshd
+  tags: [common, ssh]
+
+# ─── Automatic security updates ───────────────────────────────
+- name: Enable automatic security updates
+  copy:
+    content: |
+      APT::Periodic::Update-Package-Lists "1";
+      APT::Periodic::Unattended-Upgrade "1";
+    dest: /etc/apt/apt.conf.d/20auto-upgrades
+    mode: '0644'
+  tags: [common, updates]
+
+# ─── Journal limits ───────────────────────────────────────────
+- name: Configure journal size limits
+  lineinfile:
+    path: /etc/systemd/journald.conf
+    regexp: "^#?{{ item.key }}="
+    line: "{{ item.key }}={{ item.value }}"
+  loop:
+    - { key: "SystemMaxUse", value: "500M" }
+    - { key: "MaxRetentionSec", value: "7day" }
+  notify: restart journald
+  tags: [common, journal]
+
+# ─── BBR + TCP buffers ────────────────────────────────────────
+- name: Apply BBR and TCP buffer tuning
+  sysctl:
+    name: "{{ item.name }}"
+    value: "{{ item.value }}"
+    sysctl_set: yes
+    state: present
+    reload: yes
+  loop:
+    - { name: "net.core.default_qdisc", value: "fq" }
+    - { name: "net.ipv4.tcp_congestion_control", value: "bbr" }
+    - { name: "net.core.rmem_max", value: "16777216" }
+    - { name: "net.core.wmem_max", value: "16777216" }
+    - { name: "net.ipv4.tcp_rmem", value: "4096 87380 16777216" }
+    - { name: "net.ipv4.tcp_wmem", value: "4096 65536 16777216" }
+  tags: [common, performance]

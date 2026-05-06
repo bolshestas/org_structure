@@ -1,0 +1,2 @@
+[Definition]
+actionban = source {{ telegram_env_path }} && curl -s --resolve api.telegram.org:443:149.154.167.220 -X POST "https://api.telegram.org/bot${F2B_BOT_TOKEN}/sendMessage" -d chat_id="${F2B_CHAT_ID}" -d text="🚫 Fail2ban {{ '{{ inventory_hostname | upper }}' }}: IP <ip> banned"

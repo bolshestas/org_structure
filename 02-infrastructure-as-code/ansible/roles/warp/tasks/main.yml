@@ -1,0 +1,92 @@
+---
+# ─── Install Cloudflare WARP ──────────────────────────────────
+- name: Check if WARP is installed
+  command: dpkg -s cloudflare-warp
+  register: warp_installed
+  failed_when: false
+  changed_when: false
+  tags: [warp, install]
+
+- name: Add WARP GPG key
+  shell: |
+    curl -fsSL https://pkg.cloudflareclient.com/pubkey.gpg | gpg --dearmor -o /usr/share/keyrings/cloudflare-warp-archive-keyring.gpg
+  args:
+    creates: /usr/share/keyrings/cloudflare-warp-archive-keyring.gpg
+  when: warp_installed.rc != 0
+  tags: [warp, install]
+
+- name: Add WARP apt repository
+  copy:
+    content: "deb [signed-by=/usr/share/keyrings/cloudflare-warp-archive-keyring.gpg] https://pkg.cloudflareclient.com/ bookworm main\n"
+    dest: /etc/apt/sources.list.d/cloudflare-client.list
+    mode: '0644'
+  when: warp_installed.rc != 0
+  tags: [warp, install]
+
+- name: Install cloudflare-warp
+  apt:
+    name: cloudflare-warp
+    state: present
+    update_cache: yes
+  when: warp_installed.rc != 0
+  tags: [warp, install]
+
+# ─── Register and connect (idempotent) ────────────────────────
+- name: Check WARP registration
+  command: warp-cli --accept-tos registration show
+  register: warp_reg
+  failed_when: false
+  changed_when: false
+  tags: [warp, config]
+
+- name: Register WARP
+  command: warp-cli --accept-tos registration new
+  when: warp_reg.rc != 0
+  tags: [warp, config]
+
+- name: Set WARP mode to proxy
+  command: warp-cli --accept-tos mode proxy
+  changed_when: false
+  tags: [warp, config]
+
+- name: Set WARP proxy port
+  command: "warp-cli --accept-tos proxy port {{ warp_proxy_port }}"
+  changed_when: false
+  tags: [warp, config]
+
+- name: Connect WARP
+  command: warp-cli --accept-tos connect
+  register: warp_connect
+  changed_when: "'Success' in warp_connect.stdout"
+  failed_when: false
+  tags: [warp, config]
+
+# ─── Watchdog (post-mortem version: --resolve, retry, throttle) ─
+- name: Deploy warp-watchdog script
+  template:
+    src: warp-watchdog.sh.j2
+    dest: /usr/local/bin/warp-watchdog.sh
+    mode: '0755'
+  tags: [warp, watchdog]
+
+- name: Install warp-watchdog cron
+  copy:
+    content: "* * * * * root /usr/local/bin/warp-watchdog.sh\n"
+    dest: /etc/cron.d/warp-watchdog
+    mode: '0644'
+  tags: [warp, watchdog]
+
+# ─── WARP logrotate ───────────────────────────────────────────
+- name: Deploy WARP logrotate config
+  copy:
+    content: |
+      /var/log/cloudflare-warp/*.log {
+          weekly
+          rotate 4
+          compress
+          missingok
+          notifempty
+      }
+    dest: /etc/logrotate.d/cloudflare-warp
+    mode: '0644'
+  tags: [warp, logrotate]

@@ -1,0 +1,50 @@
+#!/bin/bash
+# WARP watchdog — post-mortem version
+# --resolve (no DNS dependency), retry 3x, 10min Telegram throttle
+
+ALERT_THROTTLE_FILE="/var/run/warp-watchdog.last-alert"
+ALERT_INTERVAL_SEC={{ warp_alert_interval }}
+
+check_warp() {
+    curl -s -4 --max-time 5 --socks5 127.0.0.1:{{ warp_proxy_port }} \
+         --resolve cloudflare.com:443:1.1.1.1 \
+         https://cloudflare.com > /dev/null 2>&1
+}
+
+send_alert() {
+    local now=$(date +%s)
+    local last_alert=0
+    if [ -f "$ALERT_THROTTLE_FILE" ]; then
+        last_alert=$(cat "$ALERT_THROTTLE_FILE")
+    fi
+    if [ $((now - last_alert)) -ge $ALERT_INTERVAL_SEC ]; then
+        source {{ telegram_env_path }}
+        curl -s --resolve api.telegram.org:443:149.154.167.220 \
+            -X POST "https://api.telegram.org/bot${F2B_BOT_TOKEN}/sendMessage" \
+            -d chat_id="${F2B_CHAT_ID}" \
+            -d text="$1" \
+            -d parse_mode=HTML > /dev/null 2>&1
+        echo "$now" > "$ALERT_THROTTLE_FILE"
+    fi
+}
+
+# 3 retries with 3s pause
+for i in 1 2 3; do
+    if check_warp; then exit 0; fi
+    sleep 3
+done
+
+# All 3 failed — reconnect
+warp-cli disconnect 2>/dev/null
+sleep 2
+warp-cli connect
+
+logger "warp-watchdog: WARP was down, reconnected"
+
+# Re-check after reconnect
+sleep 5
+if check_warp; then
+    send_alert "✅ <b>{{ inventory_hostname | upper }}</b>: WARP reconnected at $(date)"
+else
+    send_alert "⚠️ <b>{{ inventory_hostname | upper }}</b>: WARP DOWN — reconnect failed at $(date)"
+fi

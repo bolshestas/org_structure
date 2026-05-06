@@ -1,0 +1,187 @@
+---
+# ─── fail2ban ─────────────────────────────────────────────────
+- name: Install fail2ban
+  apt:
+    name: fail2ban
+    state: present
+  tags: [security, fail2ban]
+
+- name: Deploy fail2ban jail config
+  template:
+    src: jail.local.j2
+    dest: /etc/fail2ban/jail.local
+    mode: '0644'
+  notify: restart fail2ban
+  tags: [security, fail2ban]
+
+- name: Deploy fail2ban Telegram action
+  template:
+    src: telegram.conf.j2
+    dest: /etc/fail2ban/action.d/telegram.conf
+    mode: '0644'
+  notify: restart fail2ban
+  tags: [security, fail2ban]
+
+- name: Deploy Telegram env secrets
+  template:
+    src: telegram.env.j2
+    dest: "{{ telegram_env_path }}"
+    mode: '0600'
+    owner: root
+    group: root
+  tags: [security, fail2ban]
+
+- name: Enable and start fail2ban
+  systemd:
+    name: fail2ban
+    enabled: yes
+    state: started
+  tags: [security, fail2ban]
+
+# ─── iptables base rules ──────────────────────────────────────
+- name: Allow loopback
+  iptables:
+    chain: INPUT
+    in_interface: lo
+    jump: ACCEPT
+  tags: [security, iptables]
+
+- name: Allow established connections
+  iptables:
+    chain: INPUT
+    ctstate: ESTABLISHED,RELATED
+    jump: ACCEPT
+  tags: [security, iptables]
+
+- name: Allow SSH
+  iptables:
+    chain: INPUT
+    protocol: tcp
+    destination_port: "{{ ssh_port }}"
+    jump: ACCEPT
+  tags: [security, iptables]
+
+- name: Allow XRay (443)
+  iptables:
+    chain: INPUT
+    protocol: tcp
+    destination_port: "443"
+    jump: ACCEPT
+  tags: [security, iptables]
+
+- name: Allow node_exporter from home server only
+  iptables:
+    chain: INPUT
+    protocol: tcp
+    destination_port: "9100"
+    source: "{{ vault_home_server_ip }}"
+    jump: ACCEPT
+  tags: [security, iptables]
+
+- name: Drop node_exporter from others
+  iptables:
+    chain: INPUT
+    protocol: tcp
+    destination_port: "9100"
+    jump: DROP
+  tags: [security, iptables]
+
+- name: Save iptables rules
+  shell: iptables-save > /etc/iptables/rules.v4
+  changed_when: false
+  tags: [security, iptables]
+
+# ─── auditd ───────────────────────────────────────────────────
+- name: Install auditd
+  apt:
+    name:
+      - auditd
+      - audispd-plugins
+    state: present
+  tags: [security, auditd]
+
+- name: Deploy XRay audit rules
+  copy:
+    src: xray-audit.rules
+    dest: /etc/audit/rules.d/xray.rules
+    mode: '0640'
+  notify: restart auditd
+  tags: [security, auditd]
+
+- name: Enable and start auditd
+  systemd:
+    name: auditd
+    enabled: yes
+    state: started
+  tags: [security, auditd]
+
+- name: Deploy audit-watchdog script
+  template:
+    src: audit-watchdog.sh.j2
+    dest: /usr/local/bin/audit-watchdog.sh
+    mode: '0755'
+  tags: [security, auditd]
+
+- name: Install audit-watchdog cron
+  copy:
+    content: "*/{{ audit_watchdog_interval }} * * * * root /usr/local/bin/audit-watchdog.sh\n"
+    dest: /etc/cron.d/audit-watchdog
+    mode: '0644'
+  tags: [security, auditd]
+
+# ─── AIDE ─────────────────────────────────────────────────────
+- name: Install AIDE
+  apt:
+    name: aide
+    state: present
+  tags: [security, aide]
+
+- name: Check if AIDE database exists
+  stat:
+    path: /var/lib/aide/aide.db
+  register: aide_db
+  tags: [security, aide]
+
+- name: Initialize AIDE database
+  command: aideinit
+  when: not aide_db.stat.exists
+  tags: [security, aide]
+
+- name: Copy AIDE database
+  copy:
+    src: /var/lib/aide/aide.db.new
+    dest: /var/lib/aide/aide.db
+    remote_src: yes
+  when: not aide_db.stat.exists
+  tags: [security, aide]
+
+- name: Deploy AIDE check script
+  template:
+    src: aide-check.sh.j2
+    dest: /usr/local/bin/aide-check.sh
+    mode: '0755'
+  tags: [security, aide]
+
+- name: Install AIDE daily cron
+  copy:
+    content: "0 4 * * * root /usr/local/bin/aide-check.sh\n"
+    dest: /etc/cron.d/aide-check
+    mode: '0644'
+  tags: [security, aide]
+
+# ─── Disable exim4 (AIDE dependency) ─────────────────────────
+- name: Check if exim4 is installed
+  command: dpkg -s exim4-base
+  register: exim4_check
+  failed_when: false
+  changed_when: false
+  tags: [security, aide]
+
+- name: Stop and disable exim4
+  systemd:
+    name: exim4
+    enabled: no
+    state: stopped
+  when: exim4_check.rc is defined and exim4_check.rc == 0
+  failed_when: false
+  tags: [security, aide]

@@ -1,0 +1,13 @@
+#!/bin/bash
+RESULT=$(/usr/bin/aide --check --config /etc/aide/aide.conf 2>&1)
+CHANGES=$(echo "$RESULT" | grep -c "changed\|added\|removed" || true)
+
+if [ "$CHANGES" -gt 0 ]; then
+    source {{ telegram_env_path }}
+    SUMMARY=$(echo "$RESULT" | head -30)
+    curl -s --resolve api.telegram.org:443:149.154.167.220 \
+        -X POST "https://api.telegram.org/bot${F2B_BOT_TOKEN}/sendMessage" \
+        -d chat_id="${F2B_CHAT_ID}" \
+        -d text="🔒 <b>{{ inventory_hostname | upper }}</b> AIDE: ${CHANGES} file integrity changes detected" \
+        -d parse_mode=HTML > /dev/null 2>&1
+fi

@@ -1,0 +1,8 @@
+---
+xray_port: 443
+xray_sni: "www.vk.com"
+xray_short_ids:
+  - ""
+  - "0123456789abcdef"
+warp_proxy_port: 40000
+xray_stats_port: 10085

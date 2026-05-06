@@ -1,0 +1,4 @@
+---
+warp_proxy_port: 40000
+warp_alert_interval: 600
+telegram_env_path: /etc/fail2ban/telegram.env

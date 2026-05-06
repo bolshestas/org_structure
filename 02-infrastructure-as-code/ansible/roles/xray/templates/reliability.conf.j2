@@ -1,0 +1,7 @@
+[Unit]
+After=network-online.target warp-svc.service
+Wants=network-online.target
+
+[Service]
+RestartSec=5
+StartLimitBurst=5

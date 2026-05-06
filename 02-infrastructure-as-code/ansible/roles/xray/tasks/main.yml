@@ -1,0 +1,95 @@
+---
+# ─── Install XRay ─────────────────────────────────────────────
+- name: Install XRay via official installer
+  shell: |
+    bash -c "$(curl -L https://github.com/XTLS/Xray-install/raw/main/install-release.sh)" @ install
+  args:
+    creates: /usr/local/bin/xray
+  tags: [xray, install]
+
+# ─── Generate Reality keys (idempotent) ───────────────────────
+- name: Create XRay key directory
+  file:
+    path: /etc/xray
+    state: directory
+    mode: '0700'
+    owner: root
+  tags: [xray, keys]
+
+- name: Check if Reality keys exist
+  stat:
+    path: /etc/xray/reality.key
+  register: reality_key_stat
+  tags: [xray, keys]
+
+- name: Generate Reality keypair and UUID
+  shell: |
+    KEYS=$(xray x25519)
+    UUID=$(xray uuid)
+    PRIV=$(echo "$KEYS" | grep "Private" | awk '{print $NF}')
+    PUB=$(echo "$KEYS" | grep "Public" | awk '{print $NF}')
+    echo "$PRIV" > /etc/xray/reality.key
+    echo "$PUB" > /etc/xray/reality.pub
+    echo "$UUID" > /etc/xray/uuid
+    chmod 600 /etc/xray/reality.key
+    chmod 644 /etc/xray/reality.pub /etc/xray/uuid
+  when: not reality_key_stat.stat.exists
+  tags: [xray, keys]
+
+- name: Read private key
+  slurp:
+    src: /etc/xray/reality.key
+  register: xray_private_key
+  tags: [xray, config]
+
+- name: Read public key
+  slurp:
+    src: /etc/xray/reality.pub
+  register: xray_public_key
+  tags: [xray, config]
+
+- name: Read UUID
+  slurp:
+    src: /etc/xray/uuid
+  register: xray_uuid
+  tags: [xray, config]
+
+# ─── XRay config (only if not exists — protect live servers) ──
+- name: Check if XRay config exists
+  stat:
+    path: /usr/local/etc/xray/config.json
+  register: xray_config_stat
+  tags: [xray, config]
+
+- name: Deploy XRay config
+  template:
+    src: config.json.j2
+    dest: /usr/local/etc/xray/config.json
+    mode: '0644'
+  when: not xray_config_stat.stat.exists
+  notify: restart xray
+  tags: [xray, config]
+
+# ─── Systemd reliability override ─────────────────────────────
+- name: Create XRay systemd override directory
+  file:
+    path: /etc/systemd/system/xray.service.d
+    state: directory
+    mode: '0755'
+  tags: [xray, systemd]
+
+- name: Deploy XRay reliability override
+  template:
+    src: reliability.conf.j2
+    dest: /etc/systemd/system/xray.service.d/reliability.conf
+    mode: '0644'
+  notify: reload systemd
+  tags: [xray, systemd]
+
+- name: Enable and start XRay
+  systemd:
+    name: xray
+    enabled: yes
+    state: started
+    daemon_reload: yes
+  tags: [xray, systemd]

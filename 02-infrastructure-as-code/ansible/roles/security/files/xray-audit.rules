@@ -1,0 +1,2 @@
+-w /usr/local/etc/xray/ -p wa -k xray_config
+-w /usr/local/bin/xray -p wa -k xray_binary

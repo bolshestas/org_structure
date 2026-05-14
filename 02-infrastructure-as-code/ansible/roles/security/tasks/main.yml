@@ -132,7 +132,9 @@
 # ─── AIDE ─────────────────────────────────────────────────────
 - name: Install AIDE
   apt:
-    name: aide
+    name:
+      - aide
+      - aide-common
     state: present
   tags: [security, aide]
 
